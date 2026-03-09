@@ -807,22 +807,6 @@ export default function App() {
           </div>
         </div>
       </main>
-
-      <footer className="py-12 px-6 border-t border-slate-200 bg-white mt-20">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-2 grayscale opacity-50">
-            <Home className="w-5 h-5" />
-            <span className="font-bold text-lg">ValoraCasa Pro</span>
-          </div>
-          <div className="text-slate-400 text-xs font-medium text-center sm:text-left">
-            © 2024 Alberto Barollo Real Estate. Servicio de valoración gratuita para propietarios en la Costa del Sol.
-          </div>
-          <div className="flex gap-8 text-xs font-bold text-slate-400 uppercase tracking-widest">
-            <a href="https://albertobarollo.com/politica-privacidad/" className="hover:text-blue-900 transition-colors">Privacidad</a>
-            <a href="https://albertobarollo.com/contacta-conmigo/" className="hover:text-blue-900 transition-colors">Contacto</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
