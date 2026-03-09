@@ -156,7 +156,7 @@ async function startServer() {
         `;
 
         const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-flash-latest",
           contents: prompt,
           config: { 
             responseMimeType: "application/json"
@@ -214,6 +214,21 @@ async function startServer() {
             `,
           };
           await transporter.sendMail(mailOptions).catch(e => console.error("Email error:", e));
+        }
+
+        // 4. Send to Webhook (Optional - for Google Sheets/Zapier/Make)
+        if (process.env.WEBHOOK_URL) {
+          fetch(process.env.WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'valuation_generated',
+              propertyData,
+              userData,
+              valuation: valuationData,
+              timestamp: new Date().toISOString()
+            })
+          }).catch(e => console.error("Webhook error:", e));
         }
 
         res.json({ success: true, data: valuationData });
