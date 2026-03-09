@@ -22,10 +22,7 @@ import {
   LayoutDashboard,
   X
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { PropertyData, LeadData, PROPERTY_TYPES, CONDITIONS, FEATURES } from './types';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Technical Valuation Framework for Costa del Sol
 const VALUATION_MANUAL_CONTENT = `
@@ -102,76 +99,51 @@ export default function App() {
   const calculateValuation = async () => {
     setLoading(true);
     try {
-      const prompt = `
-        SISTEMA DE VALORACIÓN TÉCNICA PROFESIONAL (MÉTODO DE REPOSICIÓN Y COMPARACIÓN):
-        
-        INSTRUCCIÓN:
-        Actúa como un experto tasador inmobiliario senior en la Costa del Sol. 
-        Debes realizar una valoración basada en el valor de reposición del suelo y el método de comparación.
-        
-        DATOS DE LA PROPIEDAD:
-        - Ubicación: ${formData.address}, ${formData.city}
-        - Tipo: ${formData.propertyType}
-        - Planta (si es piso/ático/dúplex): ${formData.floor || 'N/A'}
-        - Plantas totales (si es casa/villa/chalet): ${formData.houseFloors || 'N/A'}
-        - Superficie: ${formData.size} m²
-        - Dormitorios: ${formData.rooms}
-        - Baños completos: ${formData.bathrooms}
-        - Aseos: ${formData.halfBaths}
-        - Estado: ${formData.condition}
-        - Año de construcción: ${formData.constructionYear || 'N/A'}
-        - Año última reforma integral: ${formData.lastFullRenovationYear || 'N/A'}
-        - Año última reforma parcial: ${formData.lastPartialRenovationYear || 'N/A'}
-        - Accesibilidad minusválidos: ${formData.accessibility}
-        - Extras: ${formData.features.join(', ')}
+      const propertyData = {
+        address: formData.address,
+        city: formData.city,
+        propertyType: formData.propertyType,
+        floor: formData.floor,
+        houseFloors: formData.houseFloors,
+        size: formData.size,
+        rooms: formData.rooms,
+        bathrooms: formData.bathrooms,
+        halfBaths: formData.halfBaths,
+        condition: formData.condition,
+        constructionYear: formData.constructionYear,
+        lastFullRenovationYear: formData.lastFullRenovationYear,
+        lastPartialRenovationYear: formData.lastPartialRenovationYear,
+        accessibility: formData.accessibility,
+        features: formData.features
+      };
 
-        CRITERIOS TÉCNICOS ADICIONALES:
-        - Si es Ático, aplica un coeficiente de incremento del 15-20%.
-        - Si es un Bajo, aplica un coeficiente de reducción del 5-10% (salvo que tenga jardín privado).
-        - Los estudios (0 dormitorios) tienen un precio por m² superior a la media de la zona.
-        - Valora positivamente la presencia de aseos adicionales además de los baños completos.
-        - La antigüedad (año de construcción) vs reformas es crítica: una casa antigua sin reformas pierde un 1-2% anual de valor de edificación.
-        
-        TAREA:
-        1. Utiliza la herramienta de búsqueda para encontrar precios reales de mercado actuales en Idealista, Fotocasa o portales similares para propiedades similares en la zona específica de ${formData.address}, ${formData.city}.
-        2. Aplica coeficientes de antigüedad y estado basados en los años de construcción y reforma.
-        3. Considera la accesibilidad y la planta/altura.
-        4. Calcula el valor final integrando el valor del suelo en la zona.
-        
-        Genera una respuesta en formato JSON con dos campos:
-        - "summary": Un resumen ejecutivo profesional (2 párrafos) con el rango de precio final.
-        - "breakdown": Un desglose técnico detallado que explique los coeficientes aplicados (Antigüedad, Planta, Accesibilidad, Valor Suelo, etc.).
-      `;
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone
+      };
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { 
-          responseMimeType: "application/json",
-          tools: [{ googleSearch: {} }]
-        }
-      });
-
-      const valuationData = JSON.parse(response.text || "{}");
-      setResult({
-        summary: valuationData.summary || "Error al generar resumen.",
-        breakdown: valuationData.breakdown || "Error al generar desglose."
-      });
-
-      // Save lead to database
-      await fetch('/api/leads', {
+      const response = await fetch('/api/valuation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          estimatedValue: valuationData.summary
-        })
+        body: JSON.stringify({ propertyData, userData })
       });
 
-      setStep(6); // Updated step count
-    } catch (error) {
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Error en el servidor");
+      }
+
+      setResult({
+        summary: result.data.summary || "Error al generar resumen.",
+        breakdown: result.data.breakdown || "Error al generar desglose."
+      });
+
+      setStep(6);
+    } catch (error: any) {
       console.error("Valuation error:", error);
-      alert("Hubo un error al calcular la valoración técnica. Por favor, inténtalo de nuevo.");
+      alert(`Hubo un error al calcular la valoración técnica: ${error.message}`);
     } finally {
       setLoading(false);
     }
