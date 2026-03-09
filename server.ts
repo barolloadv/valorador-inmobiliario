@@ -20,7 +20,11 @@ async function startServer() {
     const db = new Database("leads.db");
 
     // Initialize Gemini AI
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("WARNING: GEMINI_API_KEY is not set in environment variables.");
+    }
+    const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
     // Initialize database
     db.exec(`
@@ -155,6 +159,8 @@ async function startServer() {
           - "breakdown": Un desglose técnico detallado que explique los coeficientes aplicados.
         `;
 
+        console.log("Generating valuation for:", propertyData.address);
+        
         // 1. Generate Valuation with Gemini with Retry Logic
         let response;
         let retryCount = 0;
@@ -163,19 +169,22 @@ async function startServer() {
         while (retryCount < maxRetries) {
           try {
             response = await ai.models.generateContent({
-              model: "gemini-3.1-pro-preview",
+              model: "gemini-3-flash-preview",
               contents: prompt,
               config: { 
                 responseMimeType: "application/json"
               }
             });
+            console.log("Gemini response received successfully");
             break; // Success!
           } catch (error: any) {
             retryCount++;
-            if (error.status === 503 || error.message?.includes("503") || error.message?.includes("high demand")) {
-              console.log(`Gemini 503 error, retrying (${retryCount}/${maxRetries})...`);
+            console.error(`Gemini error (attempt ${retryCount}):`, error.message || error);
+            if (error.status === 503 || error.status === 429 || error.message?.includes("503") || error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("high demand")) {
               if (retryCount === maxRetries) throw error;
-              await new Promise(resolve => setTimeout(resolve, 2000 * retryCount)); // Exponential backoff
+              // For 429, we wait a bit longer
+              const waitTime = error.status === 429 ? 5000 * retryCount : 2000 * retryCount;
+              await new Promise(resolve => setTimeout(resolve, waitTime)); 
             } else {
               throw error; // Other error, don't retry
             }
@@ -184,7 +193,15 @@ async function startServer() {
         
         if (!response) throw new Error("Could not get response from Gemini");
 
-        const valuationData = JSON.parse(response.text || "{}");
+        let valuationData;
+        try {
+          const text = response.text || "{}";
+          console.log("Raw Gemini text:", text.substring(0, 100) + "...");
+          valuationData = JSON.parse(text);
+        } catch (e) {
+          console.error("Failed to parse Gemini JSON response:", e);
+          throw new Error("Invalid response format from AI");
+        }
 
         // 2. Save to Database
         const stmt = db.prepare(`
