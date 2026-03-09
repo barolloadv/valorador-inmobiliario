@@ -155,13 +155,34 @@ async function startServer() {
           - "breakdown": Un desglose técnico detallado que explique los coeficientes aplicados.
         `;
 
-        const response = await ai.models.generateContent({
-          model: "gemini-flash-latest",
-          contents: prompt,
-          config: { 
-            responseMimeType: "application/json"
+        // 1. Generate Valuation with Gemini with Retry Logic
+        let response;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            response = await ai.models.generateContent({
+              model: "gemini-3.1-pro-preview",
+              contents: prompt,
+              config: { 
+                responseMimeType: "application/json"
+              }
+            });
+            break; // Success!
+          } catch (error: any) {
+            retryCount++;
+            if (error.status === 503 || error.message?.includes("503") || error.message?.includes("high demand")) {
+              console.log(`Gemini 503 error, retrying (${retryCount}/${maxRetries})...`);
+              if (retryCount === maxRetries) throw error;
+              await new Promise(resolve => setTimeout(resolve, 2000 * retryCount)); // Exponential backoff
+            } else {
+              throw error; // Other error, don't retry
+            }
           }
-        });
+        }
+        
+        if (!response) throw new Error("Could not get response from Gemini");
 
         const valuationData = JSON.parse(response.text || "{}");
 
