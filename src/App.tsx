@@ -96,6 +96,23 @@ export default function App() {
     }));
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === 'true') {
+      setShowAdmin(true);
+    }
+
+    // Send height to parent for iframe resizing
+    const sendHeight = () => {
+      const height = document.body.scrollHeight;
+      window.parent.postMessage({ type: 'setHeight', height }, '*');
+    };
+
+    const observer = new ResizeObserver(sendHeight);
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, []);
+
   const calculateValuation = async () => {
     setLoading(true);
     try {
@@ -223,42 +240,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 py-4 px-6 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-900 p-2 rounded-xl shadow-lg shadow-blue-100">
-              <Home className="text-white w-5 h-5" />
-            </div>
-            <span className="font-bold text-xl tracking-tight">ValoraCasa <span className="text-blue-900">Pro</span></span>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden sm:flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Seguro</span>
-              <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Actualizado</span>
-            </div>
-            <button 
-              onClick={() => setShowAdmin(true)}
-              className="text-slate-300 hover:text-slate-500 transition-colors"
-              title="Admin Panel"
-            >
-              <LayoutDashboard className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto py-12 px-6">
-        <div className="mb-12 text-center max-w-2xl mx-auto">
-          <h1 className="text-4xl font-extrabold mb-4 tracking-tight text-slate-900">
-            Valoración Inmobiliaria <span className="text-blue-900 italic">Inteligente</span>
-          </h1>
-          <p className="text-slate-500 text-lg leading-relaxed">
-            Utilizamos algoritmos avanzados y datos reales de la Costa del Sol para darte el precio más preciso de mercado en menos de 2 minutos.
-          </p>
-        </div>
-
+    <div className="font-sans text-slate-900 bg-transparent">
+      <main className="max-w-4xl mx-auto py-6 px-4">
         {/* Progress Stepper */}
         <div className="mb-16 max-w-2xl mx-auto">
           <div className="flex justify-between relative">
