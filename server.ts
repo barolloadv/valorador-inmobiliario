@@ -223,34 +223,39 @@ async function startServer() {
 
         // 3. Send to Webhook (Google Sheets / Zapier / Make)
         if (process.env.WEBHOOK_URL) {
-          console.log("Sending data to Webhook...");
-          fetch(process.env.WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              timestamp: new Date().toISOString(),
-              nombre: userData.name,
-              email: userData.email,
-              telefono: userData.phone,
-              direccion: propertyData.address,
-              ciudad: propertyData.city,
-              tipo_propiedad: propertyData.propertyType,
-              superficie: propertyData.size,
-              habitaciones: propertyData.rooms,
-              baños: propertyData.bathrooms,
-              aseos: propertyData.halfBaths || 0,
-              planta: propertyData.floor || 'N/A',
-              plantas_casa: propertyData.houseFloors || 'N/A',
-              año_construccion: propertyData.constructionYear || 'N/A',
-              reforma_integral: propertyData.lastFullRenovationYear || 'N/A',
-              reforma_parcial: propertyData.lastPartialRenovationYear || 'N/A',
-              accesibilidad: propertyData.accessibility || 'Ninguna',
-              estado: propertyData.condition,
-              extras: propertyData.features?.join(', ') || 'Ninguno',
-              valoracion_resumen: valuationData.summary,
-              valoracion_desglose: valuationData.breakdown
-            })
-          }).catch(e => console.error("Webhook error:", e));
+          console.log("Intentando enviar datos al Webhook de Zapier...");
+          try {
+            const webhookResponse = await fetch(process.env.WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                timestamp: new Date().toISOString(),
+                nombre: userData.name,
+                email: userData.email,
+                telefono: userData.phone,
+                direccion: propertyData.address,
+                ciudad: propertyData.city,
+                tipo_propiedad: propertyData.propertyType,
+                superficie: propertyData.size,
+                habitaciones: propertyData.rooms,
+                baños: propertyData.bathrooms,
+                aseos: propertyData.halfBaths || 0,
+                planta: propertyData.floor || 'N/A',
+                plantas_casa: propertyData.houseFloors || 'N/A',
+                año_construccion: propertyData.constructionYear || 'N/A',
+                reforma_integral: propertyData.lastFullRenovationYear || 'N/A',
+                reforma_parcial: propertyData.lastPartialRenovationYear || 'N/A',
+                accesibilidad: propertyData.accessibility || 'Ninguna',
+                estado: propertyData.condition,
+                extras: propertyData.features?.join(', ') || 'Ninguno',
+                valoracion_resumen: valuationData.summary,
+                valoracion_desglose: valuationData.breakdown
+              })
+            });
+            console.log("Respuesta del Webhook:", webhookResponse.status, webhookResponse.statusText);
+          } catch (e) {
+            console.error("Error al enviar al Webhook:", e);
+          }
         }
 
         res.json({ success: true, data: valuationData });
