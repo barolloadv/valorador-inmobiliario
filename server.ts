@@ -221,50 +221,34 @@ async function startServer() {
           propertyData.accessibility || 'Ninguna', valuationData.summary
         );
 
-        // 3. Send Email
-        if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-          const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || "smtp.gmail.com",
-            port: parseInt(process.env.SMTP_PORT || "587"),
-            secure: false,
-            auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
-            },
-          });
-
-          const mailOptions = {
-            from: `"Alberto Barollo" <${process.env.SMTP_USER}>`,
-            to: userData.email,
-            subject: `Informe de Valoración - ${propertyData.address}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-                <h2 style="color: #1e3a8a;">Informe de Valoración Técnica</h2>
-                <p>Hola <strong>${userData.name}</strong>,</p>
-                <p>Aquí tienes el informe para tu propiedad en <strong>${propertyData.address}</strong>.</p>
-                <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <h3 style="margin-top: 0; color: #1e3a8a;">Resumen Ejecutivo</h3>
-                  <p>${(valuationData.summary || '').replace(/\n/g, '<br>')}</p>
-                </div>
-                <p>Si tienes dudas, contáctame por WhatsApp:</p>
-                <a href="https://wa.me/34622946504" style="display: inline-block; background: #25D366; color: white; padding: 12px 25px; border-radius: 50px; text-decoration: none; font-weight: bold;">WhatsApp</a>
-              </div>
-            `,
-          };
-          await transporter.sendMail(mailOptions).catch(e => console.error("Email error:", e));
-        }
-
-        // 4. Send to Webhook (Optional - for Google Sheets/Zapier/Make)
+        // 3. Send to Webhook (Google Sheets / Zapier / Make)
         if (process.env.WEBHOOK_URL) {
+          console.log("Sending data to Webhook...");
           fetch(process.env.WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              event: 'valuation_generated',
-              propertyData,
-              userData,
-              valuation: valuationData,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              nombre: userData.name,
+              email: userData.email,
+              telefono: userData.phone,
+              direccion: propertyData.address,
+              ciudad: propertyData.city,
+              tipo_propiedad: propertyData.propertyType,
+              superficie: propertyData.size,
+              habitaciones: propertyData.rooms,
+              baños: propertyData.bathrooms,
+              aseos: propertyData.halfBaths || 0,
+              planta: propertyData.floor || 'N/A',
+              plantas_casa: propertyData.houseFloors || 'N/A',
+              año_construccion: propertyData.constructionYear || 'N/A',
+              reforma_integral: propertyData.lastFullRenovationYear || 'N/A',
+              reforma_parcial: propertyData.lastPartialRenovationYear || 'N/A',
+              accesibilidad: propertyData.accessibility || 'Ninguna',
+              estado: propertyData.condition,
+              extras: propertyData.features?.join(', ') || 'Ninguno',
+              valoracion_resumen: valuationData.summary,
+              valoracion_desglose: valuationData.breakdown
             })
           }).catch(e => console.error("Webhook error:", e));
         }
@@ -300,45 +284,34 @@ async function startServer() {
           lastFullRenovationYear, lastPartialRenovationYear, accessibility, estimatedValue
         );
 
-        // Send Email if configured
-        if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-          console.log("Sending email to:", email);
-          const nodemailer = await import("nodemailer");
-          const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || "smtp.gmail.com",
-            port: parseInt(process.env.SMTP_PORT || "587"),
-            secure: false,
-            auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
-            },
-          });
-
-          const mailOptions = {
-            from: `"Alberto Barollo" <${process.env.SMTP_USER}>`,
-            to: email,
-            subject: `Informe de Valoración - ${address}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-                <h2 style="color: #059669;">Informe de Valoración Técnica</h2>
-                <p>Hola <strong>${name || ''}</strong>,</p>
-                <p>Aquí tienes el informe de valoración para tu propiedad en <strong>${address || ''}, ${city || ''}</strong>.</p>
-                <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <h3 style="margin-top: 0; color: #065f46;">Resumen Ejecutivo</h3>
-                  <p>${(valuationSummary || '').replace(/\n/g, '<br>')}</p>
-                </div>
-                <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-                  <h3 style="margin-top: 0; color: #1e293b;">Desglose Técnico</h3>
-                  <p style="font-family: monospace; font-size: 12px;">${(valuationBreakdown || '').replace(/\n/g, '<br>')}</p>
-                </div>
-                <p style="margin-top: 30px;">Si tienes alguna duda, puedes contactarme directamente por WhatsApp:</p>
-                <a href="https://wa.me/34622946504" style="display: inline-block; background: #25D366; color: white; padding: 12px 25px; border-radius: 50px; text-decoration: none; font-weight: bold;">Contactar por WhatsApp</a>
-                <p style="font-size: 12px; color: #94a3b8; margin-top: 40px;">Este es un informe automático generado por ValoraCasa Pro.</p>
-              </div>
-            `,
-          };
-
-          await transporter.sendMail(mailOptions);
+        // Send to Webhook if configured
+        if (process.env.WEBHOOK_URL) {
+          fetch(process.env.WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              timestamp: new Date().toISOString(),
+              nombre: name,
+              email: email,
+              telefono: phone,
+              direccion: address,
+              ciudad: city,
+              tipo_propiedad: propertyType,
+              superficie: size,
+              habitaciones: rooms,
+              baños: bathrooms,
+              aseos: halfBaths,
+              planta: floor,
+              plantas_casa: houseFloors,
+              año_construccion: constructionYear,
+              reforma_integral: lastFullRenovationYear,
+              reforma_parcial: lastPartialRenovationYear,
+              accesibilidad: accessibility,
+              valoracion_estimada: estimatedValue,
+              valoracion_resumen: valuationSummary,
+              valoracion_desglose: valuationBreakdown
+            })
+          }).catch(e => console.error("Webhook error:", e));
         }
         
         res.json({ success: true, id: info.lastInsertRowid });
